@@ -202,6 +202,9 @@ function App() {
                   <th className="sortable" onClick={() => handleSort('capacity_cbm')}>
                     Capacity (m³)
                   </th>
+                  <th className="sortable" onClick={() => handleSort('CER_reported_payload')}>
+                    CER Reported Payload
+                  </th>
                   <th className="sortable" onClick={() => handleSort('destination_port')}>
                     Destination
                   </th>
@@ -230,20 +233,21 @@ function App() {
                     <td>{shipment.imo_number}</td>
                     <td>{formatDate(shipment.departure_date)}</td>
                     <td>{formatNumber(shipment.capacity_cbm)}</td>
+                    <td>{formatNumber(shipment.cer_reported_payload)}</td>
                     <td>
-                      {shipment.destination_port || 'Unknown'}
-                      {shipment.destination_country && (
+                      {shipment.destination_country || 'Unknown'}
+                      {shipment.destination_port && (
                         <span style={{ color: '#999', fontSize: '0.9em' }}>
-                          {' '}({shipment.destination_country})
+                          {' '}({shipment.destination_port})
                         </span>
                       )}
                     </td>
                     <td>
-                      {shipment.actual_arrival 
+                      {shipment.actual_arrival && shipment.actual_arrival !== 'Unknown'
                         ? formatDate(shipment.actual_arrival)
-                        : shipment.estimated_arrival
+                        : shipment.estimated_arrival && shipment.estimated_arrival !== 'Unknown'
                         ? `${formatDate(shipment.estimated_arrival)} (estimated)`
-                        : 'N/A'
+                        : 'Unknown'
                       }
                     </td>
                   </tr>
