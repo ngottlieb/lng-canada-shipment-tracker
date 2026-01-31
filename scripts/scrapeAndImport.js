@@ -24,7 +24,8 @@ async function scrapeAndImport() {
       destination: vessel.destination,
       destination_country: vessel.destination_country,
       estimated_arrival: vessel.estimated_arrival,
-      departure_date: vessel.departure_date
+      departure_date: vessel.departure_date,
+      notes: "Scraped from VesselFinder"
     }));
 
     // Initialize sheet if needed
@@ -36,7 +37,7 @@ async function scrapeAndImport() {
     console.log(`\n📊 Summary:`);
     console.log(`   Added: ${result.added}`);
     console.log(`   Skipped (duplicates): ${vessels.length - result.added}`);
-    console.log(`   Total shipments in S3: ${result.total}`);
+    console.log(`   Total shipments in sheet: ${result.total}`);
     
   } catch (error) {
     console.error('Error during scrape and import:', error);

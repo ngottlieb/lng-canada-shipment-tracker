@@ -78,11 +78,13 @@ const scrapeVesselDetails = async (vesselUrl) => {
         const destLink = $(elem).next('a._npNa').text().trim() || 
                         $(elem).parent().find('a._npNa').text().trim();
         if (destLink) {
-          details.destination = destLink;
-          // Try to extract country from destination (usually after comma)
+          // Split destination into port and country
           const parts = destLink.split(',').map(p => p.trim());
           if (parts.length > 1) {
-            details.destination_country = parts[parts.length - 1];
+            details.destination = parts[0]; // Port only
+            details.destination_country = parts[parts.length - 1]; // Country
+          } else {
+            details.destination = destLink; // If no comma, use full destination
           }
         }
       }

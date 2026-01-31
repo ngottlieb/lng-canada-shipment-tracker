@@ -174,7 +174,7 @@ async function addShipmentsToSheet(newShipments) {
           'destination_country': shipment.destination_country || '',
           'estimated_arrival': shipment.estimated_arrival || '',
           'actual_arrival': '',
-          'notes': ''
+          'notes': shipment.notes || ''
         };
         
         return fieldMap[normalizedHeader] !== undefined ? fieldMap[normalizedHeader] : '';
