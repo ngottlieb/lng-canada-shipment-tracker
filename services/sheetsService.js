@@ -62,7 +62,7 @@ async function readShipmentsFromSheet() {
     
     const response = await sheetsAPI.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheet}!A:H`, // Adjust range as needed
+      range: `${sheet}!A:L`, // Adjust range as needed
     });
 
     const rows = response.data.values;
@@ -174,7 +174,8 @@ async function addShipmentsToSheet(newShipments) {
           'destination_country': shipment.destination_country || '',
           'estimated_arrival': shipment.estimated_arrival || '',
           'actual_arrival': '',
-          'notes': shipment.notes || ''
+          'notes': shipment.notes || '',
+          'flagged': ''
         };
         
         return fieldMap[normalizedHeader] !== undefined ? fieldMap[normalizedHeader] : '';
@@ -244,8 +245,82 @@ async function initializeSheet() {
   }
 }
 
+/**
+ * Update actual arrival for a specific shipment
+ * @param {string} imo - IMO number of the vessel
+ * @param {string} departureDate - Departure date in YYYY-MM-DD format
+ * @param {string} actualArrival - Actual arrival date/time
+ * @param {boolean} shouldFlag - Whether to flag this shipment
+ * @returns {Promise<boolean>} True if updated successfully
+ */
+async function updateShipmentArrival(imo, departureDate, actualArrival, shouldFlag = false) {
+  try {
+    const sheetsAPI = initSheetsService();
+    const sheet = await getSheetName();
+    
+    // Read all data to find the row
+    const response = await sheetsAPI.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheet}!A:L`,
+    });
+    
+    const rows = response.data.values;
+    if (!rows || rows.length === 0) return false;
+    
+    const headers = rows[0];
+    const imoIndex = headers.findIndex(h => h.toLowerCase().includes('imo'));
+    const departureDateIndex = headers.findIndex(h => h.toLowerCase().includes('departure'));
+    const actualArrivalIndex = headers.findIndex(h => h.toLowerCase().includes('actual_arrival'));
+    const flaggedIndex = headers.findIndex(h => h.toLowerCase().includes('flagged'));
+    
+    // Find the matching row
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const rowImo = row[imoIndex];
+      const rowDepartureDate = row[departureDateIndex] ? dayjs(row[departureDateIndex]).format('YYYY-MM-DD') : '';
+      
+      if (rowImo === imo && rowDepartureDate === departureDate) {
+        // Update the actual_arrival cell and optionally the flagged cell
+        const rowNumber = i + 1;
+        const actualArrivalColumn = String.fromCharCode(65 + actualArrivalIndex);
+        
+        // Update actual arrival
+        await sheetsAPI.spreadsheets.values.update({
+          spreadsheetId,
+          range: `${sheet}!${actualArrivalColumn}${rowNumber}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [[actualArrival]]
+          }
+        });
+        
+        // Update flagged if needed
+        if (shouldFlag && flaggedIndex >= 0) {
+          const flaggedColumn = String.fromCharCode(65 + flaggedIndex);
+          await sheetsAPI.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${sheet}!${flaggedColumn}${rowNumber}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+              values: [[true]]
+            }
+          });
+        }
+        
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error updating shipment arrival:', error.message);
+    return false;
+  }
+}
+
 module.exports = {
   readShipmentsFromSheet,
   addShipmentsToSheet,
-  initializeSheet
+  initializeSheet,
+  updateShipmentArrival
 };

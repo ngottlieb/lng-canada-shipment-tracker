@@ -5,21 +5,24 @@ const customParseFormat = require('dayjs/plugin/customParseFormat');
 
 dayjs.extend(customParseFormat);
 
+// Reusable headers for all VesselFinder requests
+const REQUEST_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.5',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Connection': 'keep-alive',
+  'Referer': 'https://www.vesselfinder.com/',
+  'Cache-Control': 'max-age=0'
+};
+
 // Scrape vessel details from VesselFinder vessel page
 const scrapeVesselDetails = async (vesselUrl) => {
   try {
     console.log(`  Accessing: ${vesselUrl}`);
     
     const response = await axios.get(vesselUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Referer': 'https://www.vesselfinder.com/',
-        'Cache-Control': 'max-age=0'
-      },
+      headers: REQUEST_HEADERS,
       timeout: 10000,
       decompress: true
     });
@@ -127,15 +130,7 @@ const scrapeVesselFinder = async () => {
     console.log('Scraping VesselFinder port page...');
     
     const response = await axios.get(portUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Cache-Control': 'max-age=0'
-      },
+      headers: REQUEST_HEADERS,
       timeout: 15000,
       decompress: true // Automatically decompress gzip responses
     });
@@ -327,7 +322,79 @@ const getDepartedVessels = async () => {
   return await scrapeVesselFinder();
 };
 
+/**
+ * Check if a vessel has arrived at its destination
+ * @param {string} imo - IMO number of the vessel
+ * @returns {Promise<Object|null>} Object with hasArrived and actualArrival date, or null if error
+ */
+const checkVesselArrival = async (imo) => {
+  try {
+    const vesselUrl = `https://www.vesselfinder.com/vessels/details/${imo}`;
+    const response = await axios.get(vesselUrl, {
+      headers: REQUEST_HEADERS,
+      timeout: 10000,
+      decompress: true
+    });
+
+    const $ = cheerio.load(response.data);
+    
+    // Check vessel status
+    let hasArrived = false;
+    let actualArrival = null;
+    let shouldFlag = false;
+    
+    // Look for "ARRIVED" text anywhere on the page
+    const pageText = $('body').text();
+    if (pageText.includes('ARRIVED')) {
+      hasArrived = true;
+      
+      // Look for ATA (Actual Time of Arrival) in the page text
+      const ataMatch = pageText.match(/ATA:\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{1,2}):(\d{2})/i);
+      if (ataMatch) {
+        const monthStr = ataMatch[1];
+        const day = ataMatch[2];
+        const hour = ataMatch[3];
+        const minute = ataMatch[4];
+        const year = dayjs().year();
+        const dateString = `${monthStr} ${day} ${year} ${hour}:${minute}`;
+        const parsed = dayjs(dateString, 'MMM D YYYY HH:mm');
+        if (parsed.isValid()) {
+          actualArrival = parsed.toISOString();
+        }
+      }
+      
+      // Check if the last port is Kitimat
+      let lastPort = null;
+      $('td').each((i, elem) => {
+        const label = $(elem).text().trim();
+        if (label === 'Last Port' || label === 'Current Port' || label === 'Port') {
+          const portText = $(elem).next().text().trim();
+          if (portText && portText !== '-' && portText !== 'N/A') {
+            lastPort = portText;
+          }
+        }
+      });
+      
+      // Flag if arrived but last port is not Kitimat
+      if (lastPort && !lastPort.toLowerCase().includes('kitimat')) {
+        shouldFlag = true;
+        console.log(`  ⚠️  Vessel arrived but last port is "${lastPort}", not Kitimat - flagging`);
+      }
+    }
+
+    return {
+      hasArrived,
+      actualArrival,
+      shouldFlag
+    };
+  } catch (error) {
+    console.error(`  Error checking vessel arrival: ${error.message}`);
+    return null;
+  }
+};
+
 module.exports = {
   getDepartedVessels,
-  scrapeVesselFinder
+  scrapeVesselFinder,
+  checkVesselArrival
 };
