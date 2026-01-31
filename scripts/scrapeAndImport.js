@@ -1,6 +1,6 @@
 require('dotenv').config();
-const { getDepartedVessels } = require('../services/marineService');
-const { addShipmentsToS3 } = require('../services/s3Service');
+const { getDepartedVessels } = require('../services/vesselFinderService');
+const { addShipmentsToSheet, initializeSheet } = require('../services/sheetsService');
 
 async function scrapeAndImport() {
   console.log('Scraping VesselFinder for departed vessels...\n');
@@ -20,15 +20,18 @@ async function scrapeAndImport() {
       name: vessel.name,
       imo: vessel.imo,
       mmsi: vessel.mmsi,
-      capacity: vessel.capacity || 174000,
+      capacity: vessel.capacity,
       destination: vessel.destination,
       destination_country: vessel.destination_country,
       estimated_arrival: vessel.estimated_arrival,
-      departure_date: new Date().toISOString()
+      departure_date: vessel.departure_date
     }));
 
-    // Add to S3
-    const result = await addShipmentsToS3(shipments);
+    // Initialize sheet if needed
+    await initializeSheet();
+
+    // Add to Google Sheet
+    const result = await addShipmentsToSheet(shipments);
     
     console.log(`\n📊 Summary:`);
     console.log(`   Added: ${result.added}`);

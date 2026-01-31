@@ -1,5 +1,9 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const dayjs = require('dayjs');
+const customParseFormat = require('dayjs/plugin/customParseFormat');
+
+dayjs.extend(customParseFormat);
 
 // Scrape vessel details from VesselFinder vessel page
 const scrapeVesselDetails = async (vesselUrl) => {
@@ -143,7 +147,7 @@ const scrapeVesselFinder = async () => {
     let currentSection = null;
     
     // Parse the page looking for section headers and vessels
-    $('h3, h2, h4, table, a[href*="/vessels/"]').each((i, elem) => {
+    $('h3, h2, h4, table, a[href*="/vessels/"], td, tr').each((i, elem) => {
       const tagName = elem.tagName.toLowerCase();
       const text = $(elem).text().trim().toLowerCase();
       
@@ -161,7 +165,62 @@ const scrapeVesselFinder = async () => {
         }
       }
       
-      // Extract vessel links
+      // Extract vessel links and departure dates from table rows in departures section
+      if (currentSection === 'departures' && tagName === 'tr') {
+        const vesselLink = $(elem).find('a[href*="/vessels/"]').first();
+        if (vesselLink.length > 0) {
+          let vesselName = vesselLink.text().trim();
+          const href = vesselLink.attr('href');
+          
+          // Clean up vessel name - remove type suffixes
+          vesselName = vesselName.replace(/\s+(LNG Tanker|Bulk Carrier|Passenger ship|Pleasure craft|Tug|SAR|General Cargo Ship|Passenger\/Ro-Ro Cargo Ship).*$/i, '').trim();
+          
+          // Check if it's an LNG tanker
+          const fullText = $(elem).text();
+          const isLNG = fullText.toLowerCase().includes('lng tanker');
+          
+          if (isLNG && vesselName && vesselName.length > 5 && 
+              !vesselName.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d/) &&
+              !vesselName.match(/^\d/)) {
+            
+            // Try to extract departure date from the row
+            let departureDate = null;
+            $(elem).find('td').each((tdIndex, td) => {
+              const tdText = $(td).text().trim();
+              // Look for date patterns like "Jan 28, 2026" or "28 Jan"
+              const dateMatch = tdText.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{4})?/i);
+              if (dateMatch && !departureDate) {
+                const monthStr = dateMatch[1];
+                const day = dateMatch[2];
+                const year = dateMatch[3] || dayjs().year();
+                
+                // Parse date using dayjs
+                const dateString = `${monthStr} ${day} ${year}`;
+                const parsed = dayjs(dateString, 'MMM D YYYY');
+                
+                if (parsed.isValid()) {
+                  departureDate = parsed.toISOString();
+                  console.log(`  Found departure date for ${vesselName}: ${parsed.format('YYYY-MM-DD')}`);
+                }
+              }
+            });
+            
+            const vesselData = {
+              name: vesselName,
+              type: 'LNG Tanker',
+              url: href.startsWith('http') ? href : `https://www.vesselfinder.com${href}`,
+              section: currentSection,
+              departure_date: departureDate
+            };
+            
+            if (!departures.find(v => v.name === vesselName)) {
+              departures.push(vesselData);
+            }
+          }
+        }
+      }
+      
+      // Extract vessel links (legacy support for non-table format)
       if (tagName === 'a' && $(elem).attr('href')?.includes('/vessels/')) {
         let vesselName = $(elem).text().trim();
         const href = $(elem).attr('href');
@@ -183,10 +242,11 @@ const scrapeVesselFinder = async () => {
               name: vesselName,
               type: 'LNG Tanker',
               url: href.startsWith('http') ? href : `https://www.vesselfinder.com${href}`,
-              section: currentSection || 'unknown'
+              section: currentSection || 'unknown',
+              departure_date: null
             };
             
-            // Add to appropriate array
+            // Add to appropriate array (avoid duplicates)
             if (currentSection === 'in_port' && !inPort.find(v => v.name === vesselName)) {
               inPort.push(vesselData);
             } else if (currentSection === 'arrivals' && !arrivals.find(v => v.name === vesselName)) {
@@ -224,7 +284,8 @@ const scrapeVesselFinder = async () => {
             capacity: details.capacity,
             destination: details.destination,
             destination_country: details.destination_country,
-            estimated_arrival: details.estimated_arrival
+            estimated_arrival: details.estimated_arrival,
+            departure_date: vessel.departure_date
           });
         } else {
           // If detail fetch fails, return basic vessel info for manual completion
@@ -234,10 +295,11 @@ const scrapeVesselFinder = async () => {
             imo: null, // Will need manual entry
             mmsi: null,
             type: vessel.type,
-            capacity: 174000,
+            capacity: null,
             destination: null,
             destination_country: null,
-            estimated_arrival: null
+            estimated_arrival: null,
+            departure_date: vessel.departure_date
           });
         }
         
