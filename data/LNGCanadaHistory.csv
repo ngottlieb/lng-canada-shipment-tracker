@@ -1,0 +1,10 @@
+﻿vessel_name,mmsi,imo_number,departure_date,capacity_cbm,CER_reported_payload,destination_port,destination_country,actual_arrival,,notes
+Mu Lan,636021030,9878876,2026-01-03T00:50:00,174000,,Tianjin Xingang,China,2026-01-19T03:01:00,,"Destination posted as ""For Order."" Went to China first, then Korea."
+Orion Hugo,636023760,9947627,2026-01-04T22:11:00,174000,,Boryeong,South Korea,,,"Headed to Korea but stopped in Port Angeles, WA for 20 days"
+Puteri Ledang,538010569,9947598,2026-01-12T15:18:00,174000,,Pyeongtaek,South Korea,2026-01-28T01:34:00,,
+Valencia Knutsen,225420000,9434266,2026-01-15T12:30:00,173400,,,,,,"Destination posted as ""For Order."" Looks like it is heading to Japan but not there yet."
+Diamond Gas Crystal,563125300,9874454,2026-01-18T06:05:00,170504,,Yung An,Taiwan,,,
+Qingcheng,477138600,1023865,2026-01-20T20:24:00,174000,,,,,,"Destination posted as ""For Order."" Turned around mid-Pacific and appears to be heading for Panama Canal to Europe."
+Malaga Knutsen,228420900,9904182,2026-01-22T18:57:00,174000,,Incheon,South Korea,,,
+Puteri Mahsuri,538010570,9947603,2026-01-24T12:57:00,174000,,Jintang,China,,,
+Extremadura Knutsen,228420800,9918157,2026-01-28T23:36:00,170444,,Incheon,South Korea,,,

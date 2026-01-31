@@ -1,0 +1,27 @@
+{
+  "name": "lng-canada-shipment-tracker",
+  "version": "1.0.0",
+  "description": "Dashboard for tracking LNG shipments from LNG Canada facility",
+  "scripts": {
+    "scrape": "node scripts/scrapeAndImport.js",
+    "start": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd client && npm install"
+  },
+  "keywords": [
+    "lng",
+    "shipment",
+    "tracking",
+    "marine"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.980.0",
+    "axios": "^1.6.2",
+    "cheerio": "^1.1.0",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
+    "dotenv": "^16.3.1"
+  }
+}
