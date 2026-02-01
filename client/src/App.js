@@ -142,6 +142,22 @@ function App() {
     .sort((a, b) => a.timestamp - b.timestamp)
     .map(({ month, tonnes }) => ({ month, tonnes: parseFloat(tonnes.toFixed(2)) }));
 
+  // Process data for shipments by country chart
+  const shipmentsByCountry = shipments
+    .filter(s => s.destination_country)
+    .reduce((acc, s) => {
+      const country = s.destination_country || 'Unknown';
+      if (!acc[country]) {
+        acc[country] = 0;
+      }
+      acc[country]++;
+      return acc;
+    }, {});
+
+  const countryChartData = Object.entries(shipmentsByCountry)
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count);
+
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -153,7 +169,17 @@ function App() {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
+    
+    // Try to parse the date
+    const date = new Date(dateString);
+    
+    // Check if it's a valid date
+    if (isNaN(date.getTime())) {
+      // If it's not a valid ISO date, just return it as-is
+      return dateString;
+    }
+    
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -364,7 +390,7 @@ function App() {
               </ResponsiveContainer>
             </div>
 
-            <div className="shipments-table">
+            <div className="shipments-table" style={{ marginBottom: '30px' }}>
               <h2>Million Tonnes Exported Per Month (CER Data)</h2>
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={tonnesChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -374,6 +400,20 @@ function App() {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="tonnes" fill="#764ba2" name="Million Tonnes" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="shipments-table">
+              <h2>Shipments by Destination Country</h2>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={countryChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="country" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="count" fill="#e74c3c" name="Number of Shipments" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -98,7 +98,14 @@ const scrapeVesselDetails = async (vesselUrl) => {
     if (etaSpan && etaSpan.includes('ETA:')) {
       const etaText = etaSpan.replace('ETA:', '').trim();
       if (etaText) {
-        details.estimated_arrival = etaText;
+        // Check if year is missing and add it (format: "Feb 21, 21:00")
+        const shortDateMatch = etaText.match(/^([A-Za-z]{3})\s+(\d{1,2}),?\s+(\d{1,2}):(\d{2})/);
+        if (shortDateMatch) {
+          const currentYear = dayjs().year();
+          details.estimated_arrival = `${shortDateMatch[1]} ${shortDateMatch[2]}, ${currentYear} ${shortDateMatch[3]}:${shortDateMatch[4]}`;
+        } else {
+          details.estimated_arrival = etaText;
+        }
       }
     }
     
