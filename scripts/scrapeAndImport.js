@@ -16,18 +16,38 @@ async function scrapeAndImport() {
       return;
     }
 
+    // Read existing shipments to check for capacity values
+    const existingShipments = await readShipmentsFromSheet();
+    
+    // Create a map of IMO to capacity from existing shipments
+    const imoToCapacity = {};
+    existingShipments.forEach(s => {
+      if (s.imo_number && s.capacity_cbm) {
+        imoToCapacity[s.imo_number] = s.capacity_cbm;
+      }
+    });
+
     // Map vessels to shipment format
-    const shipments = vessels.map(vessel => ({
-      name: vessel.name,
-      imo: vessel.imo,
-      mmsi: vessel.mmsi,
-      capacity: vessel.capacity,
-      destination: vessel.destination,
-      destination_country: vessel.destination_country,
-      estimated_arrival: vessel.estimated_arrival,
-      departure_date: vessel.departure_date,
-      notes: "Scraped from VesselFinder"
-    }));
+    const shipments = vessels.map(vessel => {
+      // If capacity is missing but we have it from a previous shipment, use it
+      let capacity = vessel.capacity;
+      if (!capacity && vessel.imo && imoToCapacity[vessel.imo]) {
+        capacity = imoToCapacity[vessel.imo];
+        console.log(`  ℹ️  Using stored capacity for ${vessel.name} (IMO: ${vessel.imo}): ${capacity} m³`);
+      }
+      
+      return {
+        name: vessel.name,
+        imo: vessel.imo,
+        mmsi: vessel.mmsi,
+        capacity: capacity,
+        destination: vessel.destination,
+        destination_country: vessel.destination_country,
+        estimated_arrival: vessel.estimated_arrival,
+        departure_date: vessel.departure_date,
+        notes: "Scraped from VesselFinder"
+      };
+    });
 
     // Initialize sheet if needed
     await initializeSheet();
