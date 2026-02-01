@@ -102,7 +102,16 @@ function App() {
   // Calculate statistics
   const stats = {
     total: shipments.length,
-    totalCapacity: shipments.reduce((sum, s) => sum + (parseInt(s.cer_reported_payload) || 0), 0)
+    totalTonnes: shipments.reduce((sum, s) => {
+      if (s.cer_reported_payload) {
+        // CER data: thousand m³ * 1000 * 0.00072487 = tonnes
+        return sum + (parseInt(s.cer_reported_payload) * 1000 * 0.00072487);
+      } else if (s.capacity_cbm) {
+        // Capacity: m³ * 0.4049 = tonnes
+        return sum + (parseInt(s.capacity_cbm) * 0.4049);
+      }
+      return sum;
+    }, 0)
   };
 
   // Process data for shipments per month chart
@@ -125,16 +134,26 @@ function App() {
 
   // Process data for tonnes per month chart
   const tonnesPerMonth = shipments
-    .filter(s => s.departure_date && s.cer_reported_payload)
+    .filter(s => s.departure_date)
     .reduce((acc, s) => {
       const date = new Date(s.departure_date);
       const monthYear = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-      const tonnes = (parseInt(s.cer_reported_payload) * 0.45) / 1000000; // Convert to million tonnes
+      
+      let tonnes = 0;
+      if (s.cer_reported_payload) {
+        // CER data: thousand m³ * 1000 * 0.00072487 = tonnes
+        tonnes = parseInt(s.cer_reported_payload) * 1000 * 0.00072487;
+      } else if (s.capacity_cbm) {
+        // Capacity: m³ * 0.4049 = tonnes
+        tonnes = parseInt(s.capacity_cbm) * 0.4049;
+      }
+      
+      const millionTonnes = tonnes / 1000000;
       
       if (!acc[monthYear]) {
         acc[monthYear] = { month: monthYear, tonnes: 0, timestamp: date.getTime() };
       }
-      acc[monthYear].tonnes += tonnes;
+      acc[monthYear].tonnes += millionTonnes;
       return acc;
     }, {});
 
@@ -205,7 +224,10 @@ function App() {
 
         {/* Alert */}
         <div className="alert">
-          <strong>⚠️ Note:</strong> These data are based on a variety of sources and it is possible there are mistakes, particularly in destination ports. CER reported exports are only available with a three month delay. Some shipments from December are currently missing from this portal but will be available soon.
+          <strong>⚠️ Note:</strong> These data are based on a variety of sources and it is possible there are mistakes,
+          particularly in destination ports. CER reported exports are only available with a three month delay.
+          Some shipments from December are currently missing from this portal but will be available soon. Conversions are made
+          using <a href="https://apps.cer-rec.gc.ca/Conversion/conversion-tables.aspx#1-8" target="_blank" rel="noopener">CER guidelines</a>.
         </div>
 
         {/* Tab Navigation */}
@@ -281,7 +303,7 @@ function App() {
                         Capacity (m³)
                       </th>
                       <th className="sortable" onClick={() => handleSort('CER_reported_payload')}>
-                        CER Reported Payload
+                        CER Reported Payload (m³)
                       </th>
                       <th className="sortable" onClick={() => handleSort('destination_port')}>
                         Destination
@@ -313,7 +335,12 @@ function App() {
                         <td>{shipment.imo_number}</td>
                         <td>{formatDate(shipment.departure_date)}</td>
                         <td>{formatNumber(shipment.capacity_cbm)}</td>
-                        <td>{formatNumber(shipment.cer_reported_payload)}</td>
+                        <td>
+                          {shipment.cer_reported_payload 
+                            ? formatNumber(Math.round(parseInt(shipment.cer_reported_payload) * 1000 * 0.0017111))
+                            : 'N/A'
+                          }
+                        </td>
                         <td>
                           {shipment.destination_country || 'Unknown'}
                           {shipment.destination_port && (
@@ -368,10 +395,10 @@ function App() {
                 <p className="value">{stats.total}</p>
               </div>
               <div className="stat-card">
-                <h3>Total Shipped Gas per Canada Energy Regulator (3 month delay)</h3>
-                <p className="value">{formatNumber(stats.totalCapacity)} m³</p>
-                <p style={{ fontSize: '1.2em', color: '#7f8c8d', margin: '10px 0 0 0' }}>
-                  {((stats.totalCapacity * 0.45) / 1000000).toFixed(2)} million tonnes
+                <h3>Total Shipped LNG</h3>
+                <p className="value">{(stats.totalTonnes / 1000000).toFixed(2)} million tonnes</p>
+                <p style={{ fontSize: '0.9em', color: '#7f8c8d', margin: '10px 0 0 0' }}>
+                  Uses CER data when available (3 month delay), otherwise uses vessel capacity (which is an overestimate).
                 </p>
               </div>
             </div>
