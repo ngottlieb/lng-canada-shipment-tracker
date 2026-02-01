@@ -82,6 +82,7 @@ function App() {
       const matchesSearch = 
         s.vessel_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.destination_port?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.destination_country?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.imo_number?.includes(searchTerm);
       return matchesSearch;
     })
