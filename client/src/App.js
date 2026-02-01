@@ -228,7 +228,7 @@ function App() {
           <strong>⚠️ Note:</strong> These data are compiled from a variety of sources and it is possible there are mistakes.
           CER reported exports are only available with a three month delay. Some shipments from December are currently
           missing from this portal but will be available soon. Conversions are made
-          using <a href="https://apps.cer-rec.gc.ca/Conversion/conversion-tables.aspx#1-8" target="_blank" rel="noopener">CER guidelines</a>.
+          using <a href="https://apps.cer-rec.gc.ca/Conversion/conversion-tables.aspx#1-8" target="_blank" rel="noopener noreferrer">CER guidelines</a>.
           {' '}<a href={`https://docs.google.com/spreadsheets/d/${GOOGLE_SHEETS_ID}`} target="_blank" rel="noopener noreferrer">View raw data in Google Sheets</a>.
         </div>
 
