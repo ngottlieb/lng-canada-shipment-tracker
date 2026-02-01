@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/lng-canada-shipment-tracker/static/css/main.6e187403.css",
-    "main.js": "/lng-canada-shipment-tracker/static/js/main.bf55f4cf.js",
-    "static/js/453.eca5f793.chunk.js": "/lng-canada-shipment-tracker/static/js/453.eca5f793.chunk.js",
+    "main.css": "/lng-canada-shipment-tracker/static/css/main.2fc43835.css",
+    "main.js": "/lng-canada-shipment-tracker/static/js/main.8b74313f.js",
+    "static/js/453.926f0775.chunk.js": "/lng-canada-shipment-tracker/static/js/453.926f0775.chunk.js",
     "index.html": "/lng-canada-shipment-tracker/index.html",
-    "main.6e187403.css.map": "/lng-canada-shipment-tracker/static/css/main.6e187403.css.map",
-    "main.bf55f4cf.js.map": "/lng-canada-shipment-tracker/static/js/main.bf55f4cf.js.map",
-    "453.eca5f793.chunk.js.map": "/lng-canada-shipment-tracker/static/js/453.eca5f793.chunk.js.map"
+    "main.2fc43835.css.map": "/lng-canada-shipment-tracker/static/css/main.2fc43835.css.map",
+    "main.8b74313f.js.map": "/lng-canada-shipment-tracker/static/js/main.8b74313f.js.map",
+    "453.926f0775.chunk.js.map": "/lng-canada-shipment-tracker/static/js/453.926f0775.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.6e187403.css",
-    "static/js/main.bf55f4cf.js"
+    "static/css/main.2fc43835.css",
+    "static/js/main.8b74313f.js"
   ]
 }
