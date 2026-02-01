@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Base platform -->
+  <rect x="10" y="26" width="12" height="2" fill="#4a5568"/>
+  
+  <!-- Stack body -->
+  <rect x="14" y="10" width="4" height="16" fill="#718096"/>
+  
+  <!-- Stack highlights for depth -->
+  <rect x="14" y="10" width="1" height="16" fill="#a0aec0"/>
+  
+  <!-- Flame - outer glow -->
+  <ellipse cx="16" cy="8" rx="4" ry="5" fill="#ff6b35" opacity="0.6"/>
+  
+  <!-- Flame - middle -->
+  <ellipse cx="16" cy="8" rx="3" ry="4" fill="#ff8c42"/>
+  
+  <!-- Flame - inner core -->
+  <ellipse cx="16" cy="8.5" rx="1.5" ry="2.5" fill="#ffd93d"/>
+  
+  <!-- Flame tip -->
+  <ellipse cx="16" cy="6" rx="1" ry="1.5" fill="#fff4a3"/>
+  
+  <!-- Support structure -->
+  <line x1="12" y1="26" x2="14" y2="20" stroke="#4a5568" stroke-width="1"/>
+  <line x1="20" y1="26" x2="18" y2="20" stroke="#4a5568" stroke-width="1"/>
+</svg>
