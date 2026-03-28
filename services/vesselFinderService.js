@@ -2,8 +2,14 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const dayjs = require('dayjs');
 const customParseFormat = require('dayjs/plugin/customParseFormat');
+const utc = require('dayjs/plugin/utc');
+const timezone = require('dayjs/plugin/timezone');
 
 dayjs.extend(customParseFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const KITIMAT_TZ = 'America/Vancouver';
 
 // Reusable headers for all VesselFinder requests
 const REQUEST_HEADERS = {
@@ -93,18 +99,15 @@ const scrapeVesselDetails = async (vesselUrl) => {
       }
     });
     
-    // Extract ETA
+    // Extract ETA — format: "Apr 12, 12:00 (in 15 days)", displayed in UTC (same as ATD)
     const etaSpan = $('span._mcol12ext').text();
     if (etaSpan && etaSpan.includes('ETA:')) {
       const etaText = etaSpan.replace('ETA:', '').trim();
-      if (etaText) {
-        // Check if year is missing and add it (format: "Feb 21, 21:00")
-        const shortDateMatch = etaText.match(/^([A-Za-z]{3})\s+(\d{1,2}),?\s+(\d{1,2}):(\d{2})/);
-        if (shortDateMatch) {
-          const currentYear = dayjs().year();
-          details.estimated_arrival = `${shortDateMatch[1]} ${shortDateMatch[2]}, ${currentYear} ${shortDateMatch[3]}:${shortDateMatch[4]}`;
-        } else {
-          details.estimated_arrival = etaText;
+      const etaMatch = etaText.match(/^([A-Za-z]{3})\s+(\d{1,2}),?\s+(\d{1,2}):(\d{2})/);
+      if (etaMatch) {
+        const parsed = dayjs.utc(`${etaMatch[1]} ${etaMatch[2]} ${dayjs().year()} ${etaMatch[3]}:${etaMatch[4]}`, 'MMM D YYYY HH:mm');
+        if (parsed.isValid()) {
+          details.estimated_arrival = parsed.toISOString();
         }
       }
     }
@@ -188,23 +191,22 @@ const scrapeVesselFinder = async () => {
               !vesselName.match(/^\d/)) {
             
             // Try to extract departure date from the row
+            // Column header is "Departure (LT)" — format: "Mar 28, 08:56" in America/Vancouver local time
             let departureDate = null;
             $(elem).find('td').each((tdIndex, td) => {
               const tdText = $(td).text().trim();
-              // Look for date patterns like "Jan 28, 2026" or "28 Jan"
-              const dateMatch = tdText.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{4})?/i);
+              const dateMatch = tdText.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{1,2}):(\d{2})$/i);
               if (dateMatch && !departureDate) {
                 const monthStr = dateMatch[1];
                 const day = dateMatch[2];
-                const year = dateMatch[3] || dayjs().year();
-                
-                // Parse date using dayjs
-                const dateString = `${monthStr} ${day} ${year}`;
-                const parsed = dayjs(dateString, 'MMM D YYYY');
-                
+                const hour = dateMatch[3];
+                const minute = dateMatch[4];
+                const year = dayjs().year();
+
+                const parsed = dayjs.tz(`${monthStr} ${day} ${year} ${hour}:${minute}`, 'MMM D YYYY HH:mm', KITIMAT_TZ);
                 if (parsed.isValid()) {
                   departureDate = parsed.toISOString();
-                  console.log(`  Found departure date for ${vesselName}: ${parsed.format('YYYY-MM-DD')}`);
+                  console.log(`  Found departure date for ${vesselName}: ${parsed.format('YYYY-MM-DD HH:mm z')}`);
                 }
               }
             });
@@ -345,43 +347,46 @@ const checkVesselArrival = async (imo) => {
 
     const $ = cheerio.load(response.data);
     
-    // Check vessel status
+    const pageText = $('body').text();
+
+    // Extract Last Port from "Recent Port Calls" section: <strong>Last Port</strong><a>Kitimat, Canada</a>
+    let lastPort = null;
+    $('strong').each((_i, elem) => {
+      if ($(elem).text().trim() === 'Last Port') {
+        const portLink = $(elem).next('a');
+        if (portLink.length) {
+          lastPort = portLink.text().trim();
+        }
+      }
+    });
+
+    // Extract ATD — labeled as UTC on the page: "ATD: Mar 26, 07:09 UTC"
+    let atd = null;
+    const atdMatch = pageText.match(/ATD:\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{1,2}):(\d{2})/i);
+    if (atdMatch) {
+      const parsed = dayjs.utc(`${atdMatch[1]} ${atdMatch[2]} ${dayjs().year()} ${atdMatch[3]}:${atdMatch[4]}`, 'MMM D YYYY HH:mm');
+      if (parsed.isValid()) {
+        atd = parsed.toISOString();
+      }
+    }
+
+    // Check arrival status
     let hasArrived = false;
     let actualArrival = null;
     let shouldFlag = false;
-    
-    // Look for "ARRIVED" text anywhere on the page
-    const pageText = $('body').text();
+
     if (pageText.includes('ARRIVED')) {
       hasArrived = true;
-      
-      // Look for ATA (Actual Time of Arrival) in the page text
+
+      // ATA is also UTC: "ATA: Mar 26, 07:09 UTC"
       const ataMatch = pageText.match(/ATA:\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),?\s*(\d{1,2}):(\d{2})/i);
       if (ataMatch) {
-        const monthStr = ataMatch[1];
-        const day = ataMatch[2];
-        const hour = ataMatch[3];
-        const minute = ataMatch[4];
-        const year = dayjs().year();
-        const dateString = `${monthStr} ${day} ${year} ${hour}:${minute}`;
-        const parsed = dayjs(dateString, 'MMM D YYYY HH:mm');
+        const parsed = dayjs.utc(`${ataMatch[1]} ${ataMatch[2]} ${dayjs().year()} ${ataMatch[3]}:${ataMatch[4]}`, 'MMM D YYYY HH:mm');
         if (parsed.isValid()) {
           actualArrival = parsed.toISOString();
         }
       }
-      
-      // Check if the last port is Kitimat
-      let lastPort = null;
-      $('td').each((i, elem) => {
-        const label = $(elem).text().trim();
-        if (label === 'Last Port' || label === 'Current Port' || label === 'Port') {
-          const portText = $(elem).next().text().trim();
-          if (portText && portText !== '-' && portText !== 'N/A') {
-            lastPort = portText;
-          }
-        }
-      });
-      
+
       // Flag if arrived but last port is not Kitimat
       if (lastPort && !lastPort.toLowerCase().includes('kitimat')) {
         shouldFlag = true;
@@ -392,7 +397,9 @@ const checkVesselArrival = async (imo) => {
     return {
       hasArrived,
       actualArrival,
-      shouldFlag
+      shouldFlag,
+      atd,
+      lastPort
     };
   } catch (error) {
     console.error(`  Error checking vessel arrival: ${error.message}`);
